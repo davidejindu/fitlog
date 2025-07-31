@@ -46,6 +46,13 @@ public class WorkoutController {
         return ResponseEntity.ok(workoutsHistory);
     }
 
+    @GetMapping("/{id}")
+    ResponseEntity<WorkoutDto> getWorkoutById(@PathVariable UUID id, Authentication auth) {
+        User user = (User) auth.getPrincipal();
+        WorkoutDto workout = workoutService.getWorkoutById(id, user);
+        return ResponseEntity.ok(workout);
+    }
+
     @DeleteMapping(path = "/{id}")
     ResponseEntity<String> deleteWorkout(@PathVariable UUID id, Authentication auth) {
         User user = (User) auth.getPrincipal();

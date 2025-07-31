@@ -41,6 +41,17 @@ public class WorkoutService {
                 .toList();
     }
 
+    public WorkoutDto getWorkoutById(UUID workoutId, User user) {
+        Workout workout = workoutRepository.findById(workoutId)
+                .orElseThrow(() -> new EntityNotFoundException("Workout not found"));
+
+        if (!workout.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("Not your workout");
+        }
+
+        return WorkoutMapper.toDto(workout);
+    }
+
     public void deleteWorkout(UUID workoutId, User user) {
         Workout workout = workoutRepository.findById(workoutId)
                 .orElseThrow(() -> new EntityNotFoundException("Workout not found"));
