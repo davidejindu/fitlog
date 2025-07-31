@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -8,13 +9,16 @@ import CreateWorkout from './pages/CreateWorkout';
 import EditWorkout from './pages/EditWorkout';
 import Analytics from './pages/Analytics';
 import AiInsights from './pages/AiInsights';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="App">
-          <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <div className="App">
+            <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -60,6 +64,22 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
             
             {/* Redirect root to dashboard if authenticated, otherwise to login */}
             <Route 
@@ -75,7 +95,8 @@ function App() {
           </Routes>
         </div>
       </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

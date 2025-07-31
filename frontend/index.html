@@ -9,5 +9,11 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Set initial theme based on localStorage or default to dark
+      const savedTheme = localStorage.getItem('theme');
+      const theme = savedTheme || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    </script>
   </body>
 </html>
