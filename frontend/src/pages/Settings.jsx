@@ -23,7 +23,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/user/account', {
+      const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/user/account`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

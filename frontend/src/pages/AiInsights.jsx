@@ -22,7 +22,7 @@ const AiInsights = () => {
         const to = new Date();
     
         const response = await fetch(
-          `http://localhost:8080/api/workout?from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`,
+          `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout?from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`,
           {
             method: 'GET',
             headers: {
@@ -62,7 +62,7 @@ const AiInsights = () => {
     setAnalyzing(true);
     try {
       const response = await fetch(
-        `http://localhost:8080/api/gemini/workout/${workoutId}?goal=${goal}`,
+        `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/gemini/workout/${workoutId}?goal=${goal}`,
         {
           method: 'POST',
           headers: {
@@ -94,7 +94,7 @@ const AiInsights = () => {
       const to = new Date();
 
       const response = await fetch(
-        `http://localhost:8080/api/gemini/period?goal=${goal}`,
+        `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/gemini/period?goal=${goal}`,
         {
           method: 'POST',
           headers: {

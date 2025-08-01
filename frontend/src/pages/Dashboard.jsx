@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+
 const Dashboard = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
@@ -67,21 +68,20 @@ const Dashboard = () => {
         const to = new Date();
     
         const response = await fetch(
-          `http://localhost:8080/api/workout?from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`,
+          `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout?from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`,
           {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('token')}`, // Include token if required
+              Authorization: `Bearer ${localStorage.getItem('token')}`,
             },
           }
         );
     
         if (!response.ok) {
-          const errorText = await response.text(); // Log the response body for debugging
+          const errorText = await response.text();
           console.error('Response error:', errorText);
           
-          // Check if it's an authentication error (401) or JWT expired (500 with JWT error)
           if (response.status === 401 || (response.status === 500 && errorText.includes('JWT expired'))) {
             console.log('Token expired or invalid, redirecting to login');
             logout();
@@ -96,6 +96,10 @@ const Dashboard = () => {
         setWorkouts(data);
       } catch (error) {
         console.error('Error fetching workouts:', error);
+        if (error.response?.status === 401) {
+          logout();
+          navigate('/login');
+        }
       } finally {
         setLoading(false);
       }
@@ -217,7 +221,7 @@ const Dashboard = () => {
                               onClick={async () => {
                                 if (window.confirm('Are you sure you want to delete this workout?')) {
                                   try {
-                                    const response = await fetch(`http://localhost:8080/api/workout/${workout.id}`, {
+                                    const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout/${workout.id}`, {
                                       method: 'DELETE',
                                       headers: {
                                         'Authorization': `Bearer ${localStorage.getItem('token')}`

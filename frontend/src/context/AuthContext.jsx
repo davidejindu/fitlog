@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
+const BASE_API_URL = import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com';
+
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -30,7 +32,7 @@ export const AuthProvider = ({ children }) => {
   const validateToken = async () => {
     try {
       // Fetch current user information
-      const response = await axios.get('http://localhost:8080/api/auth/me');
+      const response = await axios.get(`${BASE_API_URL}/api/auth/me`);
       const userData = response.data;
       setUser({
         firstName: userData.firstName,
@@ -49,7 +51,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/authenticate', {
+      const response = await axios.post(`${BASE_API_URL}/api/auth/authenticate`, {
         email,
         password
       });
@@ -72,7 +74,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (firstName, lastName, email, password) => {
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/register', {
+      const response = await axios.post(`${BASE_API_URL}/api/auth/register`, {
         firstName,
         lastName,
         email,

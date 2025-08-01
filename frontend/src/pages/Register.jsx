@@ -49,7 +49,7 @@ const Register = () => {
     );
     
     if (result.success) {
-      navigate('/dashboard');
+      navigate('/login');
     } else {
       setError(result.error);
     }

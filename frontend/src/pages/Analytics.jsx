@@ -22,7 +22,7 @@ const Analytics = () => {
     
         // Fetch workouts data
         const workoutsResponse = await fetch(
-          `http://localhost:8080/api/workout?from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`,
+          `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout?from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`,
           {
             method: 'GET',
             headers: {
@@ -52,7 +52,7 @@ const Analytics = () => {
         // Fetch calendar data
         const monthString = `${year}-${String(month + 1).padStart(2, '0')}`;
         const calendarResponse = await fetch(
-          `http://localhost:8080/api/workout/calendar?month=${monthString}`,
+          `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout/calendar?month=${monthString}`,
           {
             method: 'GET',
             headers: {

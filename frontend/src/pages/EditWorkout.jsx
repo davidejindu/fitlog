@@ -16,7 +16,7 @@ const EditWorkout = () => {
   useEffect(() => {
     const fetchWorkout = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/workout/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout/${id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -136,7 +136,7 @@ const EditWorkout = () => {
         }))
       };
 
-      const response = await fetch(`http://localhost:8080/api/workout/${id}`, {
+              const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

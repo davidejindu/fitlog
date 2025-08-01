@@ -96,7 +96,7 @@ const CreateWorkout = () => {
         }))
       };
 
-      const response = await fetch('http://localhost:8080/api/workout', {
+              const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

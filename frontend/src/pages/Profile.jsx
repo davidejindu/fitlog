@@ -18,7 +18,7 @@ const Profile = () => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const response = await fetch('http://localhost:8080/api/user/profile', {
+        const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/user/profile`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ const Profile = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch('http://localhost:8080/api/user/profile', {
+      const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/user/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
