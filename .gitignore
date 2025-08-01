@@ -32,4 +32,3 @@ build/
 ### VS Code ###
 .vscode/
 /backend/.env
-/backend/src/main/resources/application.properties
