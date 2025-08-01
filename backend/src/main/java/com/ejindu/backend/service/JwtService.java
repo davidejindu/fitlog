@@ -1,25 +1,27 @@
 package com.ejindu.backend.service;
 
-
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Service;
-
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class JwtService {
 
-    @Value("${secret.key}")
+    @Value("${jwt.secret}")
     private String SECRET_KEY;
 
     public String extractUsername(String token) {
@@ -30,7 +32,6 @@ public class JwtService {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
-
 
     public String generateToken(UserDetails userDetails) {
         return generateToken(new HashMap<>(), userDetails);
@@ -71,7 +72,17 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte [] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
-        return Keys.hmacShaKeyFor(keyBytes);
+        try {
+            log.info("JWT Secret Key length: {}", SECRET_KEY != null ? SECRET_KEY.length() : "null");
+            if (SECRET_KEY != null && SECRET_KEY.length() > 0) {
+                log.info("JWT Secret Key starts with: {}", SECRET_KEY.substring(0, Math.min(10, SECRET_KEY.length())));
+            }
+            byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+            log.info("Decoded key bytes length: {}", keyBytes.length);
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (Exception e) {
+            log.error("Error creating JWT signing key: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 }
