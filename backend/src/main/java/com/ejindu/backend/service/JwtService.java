@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JwtService {
 
-    @Value("${jwt.secret}")
+    @Value("${JWT_KEY}")
     private String SECRET_KEY;
 
     public String extractUsername(String token) {
