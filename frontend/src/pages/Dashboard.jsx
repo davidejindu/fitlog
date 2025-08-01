@@ -2,7 +2,7 @@ import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { getWorkouts, deleteWorkout } from '../services/apiService';
 
 const Dashboard = () => {
   const { logout, user } = useAuth();
@@ -67,38 +67,14 @@ const Dashboard = () => {
         from.setDate(from.getDate() - 30); // 30 days ago
         const to = new Date();
     
-        const response = await fetch(
-          `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout?from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('token')}`,
-            },
-          }
-        );
-    
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Response error:', errorText);
-          
-          if (response.status === 401 || (response.status === 500 && errorText.includes('JWT expired'))) {
-            console.log('Token expired or invalid, redirecting to login');
-            logout();
-            navigate('/login');
-            return;
-          }
-          
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-    
-        const data = await response.json();
+        const data = await getWorkouts(from, to);
         setWorkouts(data);
       } catch (error) {
         console.error('Error fetching workouts:', error);
-        if (error.response?.status === 401) {
+        if (error.message.includes('401') || error.message.includes('JWT expired')) {
           logout();
           navigate('/login');
+          return;
         }
       } finally {
         setLoading(false);
@@ -108,60 +84,88 @@ const Dashboard = () => {
     fetchWorkouts();
   }, [logout, navigate]);
 
-  return (
-    <div className="min-h-screen bg-base-100">
-      {/* Navbar */}
-      <Header logout={logout} />
+  const handleDeleteWorkout = async (workoutId) => {
+    if (window.confirm('Are you sure you want to delete this workout?')) {
+      try {
+        await deleteWorkout(workoutId);
+        // Refresh the workouts list
+        window.location.reload();
+      } catch (error) {
+        console.error('Error deleting workout:', error);
+        alert('Failed to delete workout');
+      }
+    }
+  };
 
-      {/* Main Content */}
-      <div className="container mx-auto p-4 max-w-6xl">
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-base-200">
+        <Header />
+        <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
+          <span className="loading loading-spinner loading-lg"></span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-base-200">
+      <Header />
+      
+      <div className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
-        <div className="hero bg-base-200 rounded-lg mb-6">
-          <div className="hero-content text-center">
-            <div className="max-w-md">
-              <h1 className="text-4xl font-bold">Welcome back, {getUserFirstName()}!</h1>
-              <p className="py-4">Ready to crush your fitness goals today? Let's track your progress and get some AI-powered insights.</p>
-              <button 
-                className="btn btn-primary btn-sm"
-                onClick={() => navigate('/create-workout')}
-              >
-                Start Workout
-              </button>
-            </div>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-primary">Welcome back, {getUserFirstName()}!</h1>
+          <p className="text-gray-600">Track your progress and stay motivated</p>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="stat bg-base-200 rounded-lg p-3">
-            <div className="stat-title text-xs">Total Workouts</div>
-            <div className="stat-value text-lg">{workouts.length}</div>
-            <div className="stat-desc text-xs">Last 30 days</div>
-          </div>
-          
-          <div className="stat bg-base-200 rounded-lg p-3">
-            <div className="stat-title text-xs">This Week</div>
-            <div className="stat-value text-lg">
-              {workouts.filter(workout => {
-                const workoutDate = new Date(workout.date);
-                const now = new Date();
-                const oneWeekAgo = new Date();
-                oneWeekAgo.setDate(now.getDate() - 7);
-                return workoutDate >= oneWeekAgo && workoutDate <= now;
-              }).length}
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="stat bg-base-100 shadow rounded-lg">
+            <div className="stat-figure text-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-8 h-8 stroke-current">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
             </div>
-            <div className="stat-desc text-xs">Workouts this week</div>
-          </div>
-          
-          <div className="stat bg-base-200 rounded-lg p-3">
-            <div className="stat-title text-xs">Streak</div>
-            <div className="stat-value text-lg">{calculateStreak()}</div>
+            <div className="stat-title">Current Streak</div>
+            <div className="stat-value text-primary">{calculateStreak()}</div>
             <div className="stat-desc text-xs">days</div>
           </div>
-          
-          <div className="stat bg-base-200 rounded-lg p-3">
-            <div className="stat-title text-xs">Total Weight</div>
-            <div className="stat-value text-lg">
+
+          <div className="stat bg-base-100 shadow rounded-lg">
+            <div className="stat-figure text-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-8 h-8 stroke-current">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+            </div>
+            <div className="stat-title">Total Workouts</div>
+            <div className="stat-value text-secondary">{workouts.length}</div>
+            <div className="stat-desc text-xs">last 30 days</div>
+          </div>
+
+          <div className="stat bg-base-100 shadow rounded-lg">
+            <div className="stat-figure text-accent">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-8 h-8 stroke-current">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              </svg>
+            </div>
+            <div className="stat-title">Total Exercises</div>
+            <div className="stat-value text-accent">
+              {workouts.reduce((total, workout) => {
+                return total + workout.exercises.length;
+              }, 0)}
+            </div>
+            <div className="stat-desc text-xs">exercises</div>
+          </div>
+
+          <div className="stat bg-base-100 shadow rounded-lg">
+            <div className="stat-figure text-info">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-8 h-8 stroke-current">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+              </svg>
+            </div>
+            <div className="stat-title">Total Weight</div>
+            <div className="stat-value text-info">
               {workouts.reduce((total, workout) => {
                 return total + workout.exercises.reduce((exerciseTotal, exercise) => {
                   return exerciseTotal + exercise.sets.reduce((setTotal, set) => {
@@ -193,7 +197,7 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {workouts.map((workout, index) => {
+                  {workouts.slice(0, 10).map((workout, index) => {
                     const totalWeight = workout.exercises.reduce((exerciseTotal, exercise) => {
                       return exerciseTotal + exercise.sets.reduce((setTotal, set) => {
                         return setTotal + (set.weightLbs * set.reps);
@@ -218,28 +222,7 @@ const Dashboard = () => {
                               Edit
                             </button>
                             <button
-                              onClick={async () => {
-                                if (window.confirm('Are you sure you want to delete this workout?')) {
-                                  try {
-                                    const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout/${workout.id}`, {
-                                      method: 'DELETE',
-                                      headers: {
-                                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                                      }
-                                    });
-                                    
-                                    if (response.ok) {
-                                      // Refresh the workouts list
-                                      window.location.reload();
-                                    } else {
-                                      alert('Failed to delete workout');
-                                    }
-                                  } catch (error) {
-                                    console.error('Error deleting workout:', error);
-                                    alert('Failed to delete workout');
-                                  }
-                                }
-                              }}
+                              onClick={() => handleDeleteWorkout(workout.id)}
                               className="btn btn-xs btn-error"
                             >
                               Delete
@@ -251,6 +234,13 @@ const Dashboard = () => {
                   })}
                 </tbody>
               </table>
+              {workouts.length > 10 && (
+                <div className="text-center mt-4">
+                  <p className="text-sm text-gray-600">
+                    Showing 10 most recent workouts. View all workouts in Analytics.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-sm">No recent activity found.</p>

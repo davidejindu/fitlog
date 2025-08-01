@@ -3,10 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
-const Header = ({ logout }) => {
+const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
   const isActive = (path) => location.pathname === path;
@@ -32,6 +32,11 @@ const Header = ({ logout }) => {
     const initial = getUserInitial();
     const colorIndex = initial.charCodeAt(0) % colors.length;
     return colors[colorIndex];
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -83,7 +88,7 @@ const Header = ({ logout }) => {
           <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
             <li><button onClick={() => navigate('/profile')}>Profile</button></li>
             <li><button onClick={() => navigate('/settings')}>Settings</button></li>
-            <li><button onClick={logout}>Logout</button></li>
+            <li><button onClick={handleLogout}>Logout</button></li>
           </ul>
         </div>
       </div>

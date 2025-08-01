@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { deleteUserAccount } from '../services/apiService';
 
 const Settings = () => {
   const { logout } = useAuth();
@@ -23,20 +24,9 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/user/account`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (response.ok) {
-        logout();
-        navigate('/login');
-      } else {
-        console.error('Failed to delete account');
-      }
+      await deleteUserAccount();
+      logout();
+      navigate('/login');
     } catch (error) {
       console.error('Error deleting account:', error);
     } finally {
@@ -100,93 +90,36 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Data & Privacy */}
+          {/* Danger Zone */}
           <div className="card bg-base-200 p-6">
-            <h2 className="text-xl font-semibold mb-4">Data & Privacy</h2>
+            <h2 className="text-xl font-semibold mb-4 text-error">Danger Zone</h2>
             
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-base-100 rounded-lg">
                 <div>
-                  <h3 className="font-medium">Export Data</h3>
-                  <p className="text-sm text-gray-600">Download your workout data (coming soon)</p>
-                </div>
-                <div className="badge badge-outline">Coming Soon</div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-base-100 rounded-lg">
-                <div>
-                  <h3 className="font-medium">Privacy Policy</h3>
-                  <p className="text-sm text-gray-600">Read our privacy policy</p>
-                </div>
-                <button className="btn btn-sm btn-outline">
-                Coming Soon
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Account Actions */}
-          <div className="card bg-base-200 p-6">
-            <h2 className="text-xl font-semibold mb-4">Account Actions</h2>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-base-100 rounded-lg">
-                <div>
-                  <h3 className="font-medium">Sign Out</h3>
+                  <h3 className="font-medium">Logout</h3>
                   <p className="text-sm text-gray-600">Sign out of your account</p>
                 </div>
                 <button
                   onClick={handleLogout}
+                  className={`btn btn-outline btn-sm ${loading ? 'loading' : ''}`}
                   disabled={loading}
-                  className="btn btn-sm btn-outline"
                 >
-                  {loading ? (
-                    <span className="loading loading-spinner loading-sm"></span>
-                  ) : (
-                    'Sign Out'
-                  )}
+                  {loading ? 'Signing out...' : 'Sign Out'}
                 </button>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-error/10 rounded-lg border border-error/20">
+              <div className="flex items-center justify-between p-4 bg-base-100 rounded-lg">
                 <div>
                   <h3 className="font-medium text-error">Delete Account</h3>
                   <p className="text-sm text-gray-600">Permanently delete your account and all data</p>
                 </div>
                 <button
                   onClick={handleDeleteAccount}
+                  className={`btn btn-error btn-sm ${loading ? 'loading' : ''}`}
                   disabled={loading}
-                  className="btn btn-sm btn-error"
                 >
-                  {loading ? (
-                    <span className="loading loading-spinner loading-sm"></span>
-                  ) : (
-                    'Delete'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* App Info */}
-          <div className="card bg-base-200 p-6">
-            <h2 className="text-xl font-semibold mb-4">About</h2>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-base-100 rounded-lg">
-                <div>
-                  <h3 className="font-medium">Version</h3>
-                  <p className="text-sm text-gray-600">FitLog v1.0.0</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-base-100 rounded-lg">
-                <div>
-                  <h3 className="font-medium">Terms of Service</h3>
-                  <p className="text-sm text-gray-600">Read our terms of service</p>
-                </div>
-                <button className="btn btn-sm btn-outline">
-                Coming Soon
+                  {loading ? 'Deleting...' : 'Delete Account'}
                 </button>
               </div>
             </div>

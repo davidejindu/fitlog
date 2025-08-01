@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
+import { getWorkouts, getWorkoutAnalysis, getPeriodAnalysis } from '../services/apiService';
 
 const AiInsights = () => {
   const { logout } = useAuth();
@@ -21,35 +22,15 @@ const AiInsights = () => {
         from.setDate(from.getDate() - 30); // Last 30 days
         const to = new Date();
     
-        const response = await fetch(
-          `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout?from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('token')}`,
-            },
-          }
-        );
-    
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Response error:', errorText);
-          
-          if (response.status === 401 || (response.status === 500 && errorText.includes('JWT expired'))) {
-            console.log('Token expired or invalid, redirecting to login');
-            logout();
-            navigate('/login');
-            return;
-          }
-          
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-    
-        const data = await response.json();
+        const data = await getWorkouts(from, to);
         setWorkouts(data);
       } catch (error) {
         console.error('Error fetching workouts:', error);
+        if (error.message.includes('401') || error.message.includes('JWT expired')) {
+          logout();
+          navigate('/login');
+          return;
+        }
       } finally {
         setLoading(false);
       }
@@ -61,22 +42,7 @@ const AiInsights = () => {
   const analyzeWorkout = async (workoutId) => {
     setAnalyzing(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/gemini/workout/${workoutId}?goal=${goal}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze workout');
-      }
-
-      const data = await response.json();
+      const data = await getWorkoutAnalysis(workoutId, goal);
       setAnalysis(data.analysis);
     } catch (error) {
       console.error('Error analyzing workout:', error);
@@ -89,30 +55,7 @@ const AiInsights = () => {
   const analyzePeriod = async () => {
     setAnalyzing(true);
     try {
-      const from = new Date();
-      from.setDate(from.getDate() - periodDays);
-      const to = new Date();
-
-      const response = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/gemini/period?goal=${goal}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify({
-            from: from.toISOString().split('T')[0],
-            to: to.toISOString().split('T')[0]
-          })
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze period');
-      }
-
-      const data = await response.json();
+      const data = await getPeriodAnalysis(goal);
       setAnalysis(data.analysis);
     } catch (error) {
       console.error('Error analyzing period:', error);
@@ -122,206 +65,146 @@ const AiInsights = () => {
     }
   };
 
-  // Function to parse markdown bold text
   const parseMarkdown = (text) => {
     if (!text) return '';
-    return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Simple markdown parsing for basic formatting
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold mb-2">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mb-3">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mb-4">$1</h1>')
+      .replace(/\n/g, '<br>');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-base-100">
+      <div className="min-h-screen bg-base-200">
         <Header />
-        <div className="container mx-auto p-4">
-          <div className="flex justify-center items-center h-64">
-            <span className="loading loading-spinner loading-lg"></span>
-          </div>
+        <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
+          <span className="loading loading-spinner loading-lg"></span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-200">
       <Header />
       
-      <div className="container mx-auto p-4 max-w-6xl">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold mb-2">AI Insights</h1>
-          <p className="text-sm text-gray-600 mb-4">Get personalized workout analysis and recommendations powered by AI</p>
-        </div>
-
-        {workouts.length === 0 ? (
-          <div className="text-center py-8">
-            <h2 className="text-xl font-semibold mb-2">No Workouts Available</h2>
-            <p className="text-gray-600 mb-4">Create some workouts to get AI-powered insights!</p>
-            <button
-              onClick={() => navigate('/create-workout')}
-              className="btn btn-primary btn-sm"
-            >
-              Create Your First Workout
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column - Controls */}
-            <div className="space-y-4">
-              {/* Goal Selection */}
-              <div className="card bg-base-200 p-4">
-                <h3 className="text-lg font-semibold mb-3">Training Goal</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setGoal('STRENGTH')}
-                    className={`btn btn-sm ${goal === 'STRENGTH' ? 'btn-primary' : 'btn-outline'}`}
-                  >
-                    💪 Strength
-                  </button>
-                  <button
-                    onClick={() => setGoal('MUSCLE_GROWTH')}
-                    className={`btn btn-sm ${goal === 'MUSCLE_GROWTH' ? 'btn-primary' : 'btn-outline'}`}
-                  >
-                    🏋️ Muscle Growth
-                  </button>
-                  <button
-                    onClick={() => setGoal('BOTH')}
-                    className={`btn btn-sm col-span-2 ${goal === 'BOTH' ? 'btn-primary' : 'btn-outline'}`}
-                  >
-                    🎯 Both
-                  </button>
-                </div>
-              </div>
-
-              {/* Workout Selection */}
-              <div className="card bg-base-200 p-4">
-                <h3 className="text-lg font-semibold mb-3">Analyze Specific Workout</h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {workouts.map((workout) => (
-                    <div
-                      key={workout.id}
-                      className={`p-3 rounded cursor-pointer transition-colors ${
-                        selectedWorkout?.id === workout.id
-                          ? 'bg-primary text-primary-content'
-                          : 'bg-base-100 hover:bg-base-300'
-                      }`}
-                      onClick={() => setSelectedWorkout(workout)}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="font-medium text-sm">{workout.name}</div>
-                          <div className="text-xs opacity-70">
-                            {new Date(workout.date).toLocaleDateString()} • {workout.exercises.length} exercises
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            analyzeWorkout(workout.id);
-                          }}
-                          className="btn btn-xs btn-primary"
-                          disabled={analyzing}
-                        >
-                          {analyzing ? 'Analyzing...' : 'Analyze'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Period Analysis */}
-              <div className="card bg-base-200 p-4">
-                <h3 className="text-lg font-semibold mb-3">Analyze Recent Period</h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Get insights on your recent training
-                </p>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">AI Insights</h1>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Controls */}
+          <div className="space-y-6">
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <h2 className="card-title">Analysis Settings</h2>
                 
-                {/* Timeframe Selector */}
-                <div className="flex gap-2 mb-3">
-                  <button
-                    onClick={() => setPeriodDays(3)}
-                    className={`btn btn-xs ${periodDays === 3 ? 'btn-primary' : 'btn-outline'}`}
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Fitness Goal</span>
+                  </label>
+                  <select 
+                    className="select select-bordered"
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value)}
                   >
-                    3 Days
-                  </button>
+                    <option value="STRENGTH">Strength</option>
+                    <option value="MUSCLE_GROWTH">Muscle Growth</option>
+                    <option value="BOTH">Both</option>
+                  </select>
+                </div>
+
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Period Analysis (Days)</span>
+                  </label>
+                  <input
+                    type="number"
+                    className="input input-bordered"
+                    value={periodDays}
+                    onChange={(e) => setPeriodDays(parseInt(e.target.value))}
+                    min="7"
+                    max="90"
+                  />
+                </div>
+
+                <div className="card-actions justify-end">
                   <button
-                    onClick={() => setPeriodDays(7)}
-                    className={`btn btn-xs ${periodDays === 7 ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={analyzePeriod}
+                    className={`btn btn-primary ${analyzing ? 'loading' : ''}`}
+                    disabled={analyzing}
                   >
-                    7 Days
-                  </button>
-                  <button
-                    onClick={() => setPeriodDays(14)}
-                    className={`btn btn-xs ${periodDays === 14 ? 'btn-primary' : 'btn-outline'}`}
-                  >
-                    14 Days
-                  </button>
-                  <button
-                    onClick={() => setPeriodDays(30)}
-                    className={`btn btn-xs ${periodDays === 30 ? 'btn-primary' : 'btn-outline'}`}
-                  >
-                    30 Days
+                    {analyzing ? 'Analyzing...' : 'Analyze Period'}
                   </button>
                 </div>
-                
-                <button
-                  onClick={analyzePeriod}
-                  className="btn btn-primary w-full"
-                  disabled={analyzing}
-                >
-                  {analyzing ? 'Analyzing...' : `Analyze Last ${periodDays} Days`}
-                </button>
               </div>
             </div>
 
-            {/* Right Column - Analysis Results */}
-            <div className="card bg-base-200 p-4">
-              <h3 className="text-lg font-semibold mb-3">AI Analysis</h3>
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <h2 className="card-title">Workout Analysis</h2>
+                
+                {workouts.length === 0 ? (
+                  <p className="text-gray-600">No workouts found. Create some workouts to get AI insights!</p>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="label">
+                      <span className="label-text">Select a workout to analyze:</span>
+                    </label>
+                    <select 
+                      className="select select-bordered w-full"
+                      value={selectedWorkout || ''}
+                      onChange={(e) => setSelectedWorkout(e.target.value)}
+                    >
+                      <option value="">Choose a workout...</option>
+                      {workouts.map((workout) => (
+                        <option key={workout.id} value={workout.id}>
+                          {workout.name} - {new Date(workout.date).toLocaleDateString()}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <button
+                      onClick={() => analyzeWorkout(selectedWorkout)}
+                      className={`btn btn-secondary w-full ${analyzing ? 'loading' : ''}`}
+                      disabled={!selectedWorkout || analyzing}
+                    >
+                      {analyzing ? 'Analyzing...' : 'Analyze Workout'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Analysis Results */}
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">AI Analysis</h2>
               
-              {!analysis ? (
-                <div className="text-center py-8">
-                  <div className="text-4xl mb-4">🤖</div>
-                  <p className="text-gray-600">
-                    Select a workout or analyze your recent period to get AI-powered insights
-                  </p>
+              {analysis ? (
+                <div className="prose max-w-none">
+                  <div 
+                    dangerouslySetInnerHTML={{ __html: parseMarkdown(analysis) }}
+                    className="text-base-content"
+                  />
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="bg-base-100 p-4 rounded">
-                    <h4 className="font-semibold mb-2">Analysis Results</h4>
-                    <div className="prose prose-sm max-w-none">
-                      <div 
-                        className="whitespace-pre-wrap text-sm"
-                        dangerouslySetInnerHTML={{ __html: parseMarkdown(analysis) }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setAnalysis(null)}
-                      className="btn btn-outline btn-sm"
-                    >
-                      Clear Analysis
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (selectedWorkout) {
-                          analyzeWorkout(selectedWorkout.id);
-                        } else {
-                          analyzePeriod();
-                        }
-                      }}
-                      className="btn btn-primary btn-sm"
-                      disabled={analyzing}
-                    >
-                      {analyzing ? 'Analyzing...' : 'Refresh Analysis'}
-                    </button>
-                  </div>
+                <div className="text-center py-8">
+                  <div className="text-6xl mb-4">🤖</div>
+                  <h3 className="text-lg font-semibold mb-2">Ready for Analysis</h3>
+                  <p className="text-gray-600">
+                    Select a workout or analyze your recent period to get AI-powered insights about your fitness progress.
+                  </p>
                 </div>
               )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

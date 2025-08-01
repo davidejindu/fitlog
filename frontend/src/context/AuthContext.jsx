@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
-
-const BASE_API_URL = import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com';
+import { getCurrentUser, login as apiLogin, register as apiRegister } from '../services/apiService';
 
 const AuthContext = createContext();
 
@@ -18,11 +16,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
 
-  // Set up axios interceptor for JWT token
+  // Set up token validation
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // Try to validate token by making a request
       validateToken();
     } else {
       setLoading(false);
@@ -32,8 +28,7 @@ export const AuthProvider = ({ children }) => {
   const validateToken = async () => {
     try {
       // Fetch current user information
-      const response = await axios.get(`${BASE_API_URL}/api/auth/me`);
-      const userData = response.data;
+      const userData = await getCurrentUser();
       setUser({
         firstName: userData.firstName,
         lastName: userData.lastName,
@@ -51,48 +46,49 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${BASE_API_URL}/api/auth/authenticate`, {
-        email,
-        password
-      });
+      const response = await apiLogin(email, password);
       
-      const { token: newToken, firstName, lastName } = response.data;
+      const { token: newToken, firstName, lastName } = response;
       setToken(newToken);
       setUser({ firstName, lastName, email });
       localStorage.setItem('token', newToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
       
       return { success: true };
     } catch (error) {
       console.error('Login failed:', error);
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Login failed' 
+        error: error.message || 'Login failed. Please try again.' 
       };
     }
   };
 
   const register = async (firstName, lastName, email, password) => {
     try {
-      const response = await axios.post(`${BASE_API_URL}/api/auth/register`, {
-        firstName,
-        lastName,
-        email,
-        password
-      });
+      const response = await apiRegister(firstName, lastName, email, password);
       
-      const { token: newToken } = response.data;
+      const { token: newToken } = response;
       setToken(newToken);
       setUser({ firstName, lastName, email });
       localStorage.setItem('token', newToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
       
       return { success: true };
     } catch (error) {
       console.error('Registration failed:', error);
+      
+      // Provide user-friendly registration error messages
+      let userMessage = 'Registration failed. Please try again.';
+      if (error.message.includes('email') || error.message.includes('Email')) {
+        userMessage = 'An account with this email already exists.';
+      } else if (error.message.includes('password') || error.message.includes('Password')) {
+        userMessage = 'Password must be at least 6 characters long.';
+      } else if (error.message.includes('Invalid request')) {
+        userMessage = 'Please check your information and try again.';
+      }
+      
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Registration failed' 
+        error: userMessage
       };
     }
   };
@@ -101,7 +97,6 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
   };
 
   const value = {

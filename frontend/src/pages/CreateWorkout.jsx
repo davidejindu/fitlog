@@ -1,22 +1,44 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
+import Header from '../components/Header';
+import { createWorkout } from '../services/apiService';
 
 const CreateWorkout = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
   const [workoutName, setWorkoutName] = useState('');
   const [notes, setNotes] = useState('');
-  const [exercises, setExercises] = useState([]);
+  const [exercises, setExercises] = useState([
+    {
+      id: Date.now(),
+      name: '',
+      sets: [
+        {
+          id: Date.now() + 1,
+          reps: '',
+          weightLbs: ''
+        }
+      ]
+    }
+  ]);
   const [loading, setLoading] = useState(false);
 
   const addExercise = () => {
-    setExercises([...exercises, {
-      id: Date.now(),
-      name: '',
-      sets: [{ id: Date.now(), reps: '', weightLbs: '' }]
-    }]);
+    setExercises([
+      ...exercises,
+      {
+        id: Date.now(),
+        name: '',
+        sets: [
+          {
+            id: Date.now() + 1,
+            reps: '',
+            weightLbs: ''
+          }
+        ]
+      }
+    ]);
   };
 
   const removeExercise = (exerciseIndex) => {
@@ -53,33 +75,6 @@ const CreateWorkout = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!workoutName.trim()) {
-      alert('Please enter a workout name');
-      return;
-    }
-
-    if (exercises.length === 0) {
-      alert('Please add at least one exercise');
-      return;
-    }
-
-    // Validate exercises
-    for (let exercise of exercises) {
-      if (!exercise.name.trim()) {
-        alert('Please enter a name for all exercises');
-        return;
-      }
-      for (let set of exercise.sets) {
-        const reps = parseInt(set.reps);
-        const weight = parseInt(set.weightLbs);
-        if (isNaN(reps) || reps <= 0 || isNaN(weight) || weight < 0) {
-          alert('Please enter valid reps and weight for all sets');
-          return;
-        }
-      }
-    }
-
     setLoading(true);
 
     try {
@@ -96,19 +91,7 @@ const CreateWorkout = () => {
         }))
       };
 
-              const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(workoutData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create workout');
-      }
-
+      await createWorkout(workoutData);
       navigate('/dashboard');
     } catch (error) {
       console.error('Error creating workout:', error);
@@ -187,75 +170,61 @@ const CreateWorkout = () => {
                       type="button"
                       onClick={() => removeExercise(exerciseIndex)}
                       className="btn btn-error btn-sm"
+                      disabled={exercises.length === 1}
                     >
                       Remove
                     </button>
                   </div>
 
-                  {/* Sets */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <h3 className="font-semibold">Sets</h3>
+                      <h3 className="font-medium">Sets</h3>
                       <button
                         type="button"
                         onClick={() => addSet(exerciseIndex)}
-                        className="btn btn-secondary btn-sm"
+                        className="btn btn-sm btn-outline"
                       >
                         Add Set
                       </button>
                     </div>
 
                     {exercise.sets.map((set, setIndex) => (
-                      <div key={set.id} className="flex items-center gap-4 p-2 bg-base-200 rounded">
-                        <span className="font-medium">Set {setIndex + 1}</span>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            placeholder="Weight (lbs)"
-                            className="input input-bordered input-sm w-24"
-                            value={set.weightLbs}
-                            onChange={(e) => updateSet(exerciseIndex, setIndex, 'weightLbs', e.target.value)}
-                            min="0"
-                            required
-                          />
-                          <span>lbs</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            placeholder="Reps"
-                            className="input input-bordered input-sm w-20"
-                            value={set.reps}
-                            onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
-                            min="1"
-                            required
-                          />
-                          <span>reps</span>
-                        </div>
-                        {exercise.sets.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeSet(exerciseIndex, setIndex)}
-                            className="btn btn-error btn-xs"
-                          >
-                            Remove
-                          </button>
-                        )}
+                      <div key={set.id} className="flex gap-2 items-center">
+                        <span className="text-sm font-medium w-12">Set {setIndex + 1}:</span>
+                        <input
+                          type="number"
+                          placeholder="Reps"
+                          className="input input-bordered input-sm w-20"
+                          value={set.reps}
+                          onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
+                          required
+                        />
+                        <span className="text-sm">reps</span>
+                        <input
+                          type="number"
+                          placeholder="Weight"
+                          className="input input-bordered input-sm w-20"
+                          value={set.weightLbs}
+                          onChange={(e) => updateSet(exerciseIndex, setIndex, 'weightLbs', e.target.value)}
+                          required
+                        />
+                        <span className="text-sm">lbs</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSet(exerciseIndex, setIndex)}
+                          className="btn btn-error btn-xs"
+                          disabled={exercise.sets.length === 1}
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
               ))}
-
-              {exercises.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No exercises added yet. Click "Add Exercise" to get started!</p>
-                </div>
-              )}
             </div>
 
-            {/* Submit Buttons */}
-            <div className="flex gap-4">
+            <div className="flex justify-end gap-4">
               <button
                 type="button"
                 onClick={() => navigate('/dashboard')}
@@ -265,7 +234,7 @@ const CreateWorkout = () => {
               </button>
               <button
                 type="submit"
-                className="btn btn-primary"
+                className={`btn btn-primary ${loading ? 'loading' : ''}`}
                 disabled={loading}
               >
                 {loading ? 'Creating...' : 'Create Workout'}

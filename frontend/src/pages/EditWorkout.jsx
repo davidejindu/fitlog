@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
+import { getWorkoutById, updateWorkout } from '../services/apiService';
 
 const EditWorkout = () => {
   const { token } = useAuth();
@@ -16,19 +17,7 @@ const EditWorkout = () => {
   useEffect(() => {
     const fetchWorkout = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout/${id}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch workout');
-        }
-
-        const workout = await response.json();
+        const workout = await getWorkoutById(id);
         setWorkoutName(workout.name);
         setNotes(workout.notes || '');
         setExercises(workout.exercises.map(exercise => ({
@@ -50,7 +39,7 @@ const EditWorkout = () => {
     };
 
     fetchWorkout();
-  }, [id, token, navigate]);
+  }, [id, navigate]);
 
   const addExercise = () => {
     setExercises([...exercises, {
@@ -136,19 +125,7 @@ const EditWorkout = () => {
         }))
       };
 
-              const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/workout/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(workoutData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update workout');
-      }
-
+      await updateWorkout(id, workoutData);
       navigate('/dashboard');
     } catch (error) {
       console.error('Error updating workout:', error);
@@ -240,75 +217,61 @@ const EditWorkout = () => {
                       type="button"
                       onClick={() => removeExercise(exerciseIndex)}
                       className="btn btn-error btn-sm"
+                      disabled={exercises.length === 1}
                     >
                       Remove
                     </button>
                   </div>
 
-                  {/* Sets */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <h3 className="font-semibold">Sets</h3>
+                      <h3 className="font-medium">Sets</h3>
                       <button
                         type="button"
                         onClick={() => addSet(exerciseIndex)}
-                        className="btn btn-secondary btn-sm"
+                        className="btn btn-sm btn-outline"
                       >
                         Add Set
                       </button>
                     </div>
 
                     {exercise.sets.map((set, setIndex) => (
-                      <div key={set.id} className="flex items-center gap-4 p-2 bg-base-200 rounded">
-                        <span className="font-medium">Set {setIndex + 1}</span>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            placeholder="Weight (lbs)"
-                            className="input input-bordered input-sm w-24"
-                            value={set.weightLbs}
-                            onChange={(e) => updateSet(exerciseIndex, setIndex, 'weightLbs', e.target.value)}
-                            min="0"
-                            required
-                          />
-                          <span>lbs</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            placeholder="Reps"
-                            className="input input-bordered input-sm w-20"
-                            value={set.reps}
-                            onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
-                            min="1"
-                            required
-                          />
-                          <span>reps</span>
-                        </div>
-                        {exercise.sets.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeSet(exerciseIndex, setIndex)}
-                            className="btn btn-error btn-xs"
-                          >
-                            Remove
-                          </button>
-                        )}
+                      <div key={set.id} className="flex gap-2 items-center">
+                        <span className="text-sm font-medium w-12">Set {setIndex + 1}:</span>
+                        <input
+                          type="number"
+                          placeholder="Reps"
+                          className="input input-bordered input-sm w-20"
+                          value={set.reps}
+                          onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
+                          required
+                        />
+                        <span className="text-sm">reps</span>
+                        <input
+                          type="number"
+                          placeholder="Weight"
+                          className="input input-bordered input-sm w-20"
+                          value={set.weightLbs}
+                          onChange={(e) => updateSet(exerciseIndex, setIndex, 'weightLbs', e.target.value)}
+                          required
+                        />
+                        <span className="text-sm">lbs</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSet(exerciseIndex, setIndex)}
+                          className="btn btn-error btn-xs"
+                          disabled={exercise.sets.length === 1}
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
               ))}
-
-              {exercises.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No exercises added yet. Click "Add Exercise" to get started!</p>
-                </div>
-              )}
             </div>
 
-            {/* Submit Buttons */}
-            <div className="flex gap-4">
+            <div className="flex justify-end gap-4">
               <button
                 type="button"
                 onClick={() => navigate('/dashboard')}
@@ -318,7 +281,7 @@ const EditWorkout = () => {
               </button>
               <button
                 type="submit"
-                className="btn btn-primary"
+                className={`btn btn-primary ${saving ? 'loading' : ''}`}
                 disabled={saving}
               >
                 {saving ? 'Saving...' : 'Save Changes'}

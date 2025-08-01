@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
+import { getUserProfile, updateUserProfile } from '../services/apiService';
 
 const Profile = () => {
   const { logout } = useAuth();
@@ -18,29 +19,7 @@ const Profile = () => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/user/profile`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Response error:', errorText);
-          
-          if (response.status === 401 || (response.status === 500 && errorText.includes('JWT expired'))) {
-            console.log('Token expired or invalid, redirecting to login');
-            logout();
-            navigate('/login');
-            return;
-          }
-          
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const userData = await response.json();
+        const userData = await getUserProfile();
         setUser(userData);
         setFormData({
           firstName: userData.firstName || '',
@@ -48,6 +27,11 @@ const Profile = () => {
         });
       } catch (error) {
         console.error('Error fetching user profile:', error);
+        if (error.message.includes('401') || error.message.includes('JWT expired')) {
+          logout();
+          navigate('/login');
+          return;
+        }
       } finally {
         setLoading(false);
       }
@@ -67,34 +51,16 @@ const Profile = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_BASE_API_URL || 'https://fitlog-z57z.onrender.com'}/api/user/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Response error:', errorText);
-        
-        if (response.status === 401 || (response.status === 500 && errorText.includes('JWT expired'))) {
-          console.log('Token expired or invalid, redirecting to login');
-          logout();
-          navigate('/login');
-          return;
-        }
-        
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const updatedUser = await response.json();
+      const updatedUser = await updateUserProfile(formData);
       setUser(updatedUser);
       setEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
+      if (error.message.includes('401') || error.message.includes('JWT expired')) {
+        logout();
+        navigate('/login');
+        return;
+      }
     } finally {
       setSaving(false);
     }
@@ -110,115 +76,113 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-base-100">
+      <div className="min-h-screen bg-base-200">
         <Header />
-        <div className="container mx-auto p-4">
-          <div className="flex justify-center items-center h-64">
-            <span className="loading loading-spinner loading-lg"></span>
-          </div>
+        <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
+          <span className="loading loading-spinner loading-lg"></span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-200">
       <Header />
       
-      <div className="container mx-auto p-4 max-w-2xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-2">Profile</h1>
-          <p className="text-gray-600">Manage your account information</p>
-        </div>
-
-        <div className="card bg-base-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold">Personal Information</h2>
-            {!editing && (
-              <button
-                onClick={() => setEditing(true)}
-                className="btn btn-sm btn-outline"
-              >
-                Edit
-              </button>
-            )}
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-3xl font-bold mb-8">Profile</h1>
+          
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title text-xl mb-6">Personal Information</h2>
+              
+              {editing ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">First Name</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="firstName"
+                        className="input input-bordered"
+                        value={formData.firstName}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">Last Name</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="lastName"
+                        className="input input-bordered"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-6">
+                    <button
+                      onClick={handleSave}
+                      className={`btn btn-primary ${saving ? 'loading' : ''}`}
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      className="btn btn-outline"
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">
+                        <span className="label-text font-medium">First Name</span>
+                      </label>
+                      <p className="text-lg">{user?.firstName || 'Not set'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="label">
+                        <span className="label-text font-medium">Last Name</span>
+                      </label>
+                      <p className="text-lg">{user?.lastName || 'Not set'}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="label">
+                      <span className="label-text font-medium">Email</span>
+                    </label>
+                    <p className="text-lg">{user?.email || 'Not set'}</p>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="btn btn-primary"
+                    >
+                      Edit Profile
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-
-          {editing ? (
-            <div className="space-y-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">First Name</span>
-                </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  className="input input-bordered"
-                  placeholder="Enter your first name"
-                />
-              </div>
-
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Last Name</span>
-                </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  className="input input-bordered"
-                  placeholder="Enter your last name"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="btn btn-primary btn-sm"
-                >
-                  {saving ? (
-                    <span className="loading loading-spinner loading-sm"></span>
-                  ) : (
-                    'Save Changes'
-                  )}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="btn btn-outline btn-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <label className="label">
-                  <span className="label-text font-semibold">First Name</span>
-                </label>
-                <p className="text-base-content">{user?.firstName || 'Not set'}</p>
-              </div>
-
-              <div>
-                <label className="label">
-                  <span className="label-text font-semibold">Last Name</span>
-                </label>
-                <p className="text-base-content">{user?.lastName || 'Not set'}</p>
-              </div>
-
-              <div>
-                <label className="label">
-                  <span className="label-text font-semibold">Email</span>
-                </label>
-                <p className="text-base-content">{user?.email}</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
