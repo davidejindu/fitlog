@@ -119,4 +119,3 @@ FitLog is a full-featured fitness tracking web application that helps users log 
 - Backend on Render (containerized)
 - Environment-specific configuration for secure deployment
 
----
